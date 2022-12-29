@@ -4,6 +4,7 @@ const socket = io();
 /* ------------------------------- Get Element ------------------------------ */
 
 const containerProducto = document.getElementById("containerProducto");
+const containerFaker = document.getElementById("containerFaker");
 const sendForm = document.getElementById("sendForm");
 
 /* -------------------------------- Functions ------------------------------- */
@@ -29,7 +30,27 @@ function renderProducts(data) {
       containerProducto.innerHTML = template({ products: data });
     });
 }
+function renderFaker(data) {
+  fetch(`${API}/api/productos-test`)
+    .then((res) => res.json())
+    .then((res) => {
+      console.log(res);
+      let html = "";
+      res.forEach((element) => {
+        html += `
+        <div>
+        <p>${element.producto}</p>
+        <p>${element.precio}</p>
+        <img src=${element.image} "/>
+        </div>
+        `;
+      });
+      const template = Handlebars.compile(html);
+      containerFaker.innerHTML = template(html);
+    });
+}
 
+renderFaker();
 function enviarMsg() {
   const email = document.getElementById("input-email").value;
   const nombre = document.getElementById("input-nombre").value;

@@ -8,6 +8,10 @@ import { Server } from "socket.io";
 import http from "http";
 import { productos, mensajes } from "./src/controllers/products.js";
 import { normalize, schema } from "normalizr";
+import { faker } from "@faker-js/faker";
+
+const { product, price, image } = faker;
+
 const app = express();
 const port = process.env.port || 8080;
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -45,6 +49,22 @@ app.use("/api/productos", Router);
 app.get("/", (req, res) => {
   res.render("home");
 });
+
+app.use("/api/productos-test", (req, res) => {
+  let prodFaker = [];
+  for (let i = 0; i < 5; i++) {
+    prodFaker.push({
+      producto: faker.commerce.product(),
+      precio: faker.commerce.price(1000, 4000, 0, "$"),
+      image: faker.image.abstract(150, 150),
+    });
+  }
+  res.json(prodFaker);
+  // res.render("productslist");
+});
+/* -------------------------------------------------------------------------- */
+/*                                    Faker                                   */
+/* -------------------------------------------------------------------------- */
 
 /* -------------------------------------------------------------------------- */
 /*                                Normalización                               */
