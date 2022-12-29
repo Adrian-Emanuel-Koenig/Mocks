@@ -41,7 +41,7 @@ function renderFaker(data) {
         <div>
         <p>${element.producto}</p>
         <p>${element.precio}</p>
-        <img src=${element.image} "/>
+        <p>${element.image}</p>
         </div>
         `;
       });
