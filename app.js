@@ -1,86 +1,93 @@
+import express from "express";
+import { connectionMDB } from "./src/connection/mongoDb.js";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import { engine } from "express-handlebars";
+import { Router } from "express";
+import { Server } from "socket.io";
+import http from "http";
+import { productos, mensajes } from "./src/controllers/products.js";
+import { normalize, schema } from "normalizr";
+const app = express();
+const port = process.env.port || 8080;
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const server = http.createServer(app);
+const io = new Server(server);
+
 /* -------------------------------------------------------------------------- */
 /*                                   Server                                   */
 /* -------------------------------------------------------------------------- */
 
-/* ---------------------------------- Class --------------------------------- */
-const express = require('express');
-const app = express();
-const port = process.env.port || 8000;
-const httpServer = require('http').createServer(app);
-const io = require('socket.io')(httpServer);
-const { engine } = require('express-handlebars');
-const { normalize, schema } = require('normalizr');
+server.listen(port, async () => {
+  await connectionMDB;
+  console.log("Server on: http://localhost:" + port);
+});
 
-// import express from "express";
-// import { connectionMDB } from "./src/connection/mongoDb.js";
-// import { dirname } from "path";
-// import { fileURLToPath } from "url";
-// import { engine } from "express-handlebars";
-// import { Router } from "express";
-// import { normalize, schema } from "normalizr";
-
-// const app = express();
-// const port = process.env.port || 8080;
-// const __dirname = dirname(fileURLToPath(import.meta.url));
-/* ----------------------------------- DB ----------------------------------- */
-const { mysql } = require('./options/mysql');
-const { sqlite } = require('./options/sqlite');
-const Contenedor = require('./container.js');
-const Productos = new Contenedor(mysql, 'libros');
-const Chats = new Contenedor(sqlite, 'chats');
-/* --------------------------------- Config --------------------------------- */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname + '/public'));
-app.set('view engine', 'hbs');
-app.set('views', './views');
+app.use(express.static(__dirname + "/src/public"));
+
+app.set("view engine", "hbs");
+app.set("views", "./src/views");
 app.engine(
-  'hbs',
+  "hbs",
   engine({
-    extname: '.hbs',
-    defaultLayout: 'index.hbs',
-    layoutsDir: __dirname + '/views/layouts',
-    partialsDir: __dirname + '/views/partials',
+    extname: ".hbs",
+    defaultLayout: "index.hbs",
+    layoutsDir: __dirname + "/src/views/layouts",
+    partialsDir: __dirname + "/src/views/partials",
   })
 );
-httpServer.listen(port, () => console.log('SERVER ON http://localhost:' + port));
 
-app.get('/', async (req, res) => {
-  res.render('home');
+app.use("/api/productos", Router);
+
+app.get("/", (req, res) => {
+  res.render("home");
 });
+
 /* -------------------------------------------------------------------------- */
 /*                                Normalización                               */
 /* -------------------------------------------------------------------------- */
-const authorSchema = new schema.Entity('authors', {}, { idAttribute: 'email' }); 
-const messageSchema = new schema.Entity('messages', {
-  author: authorSchema,
-});
-const chatSchema = new schema.Entity('chats', {
-  messages: [messageSchema],
-});
+
+const authorSchema = new schema.Entity("authors", {}, { idAttribute: "email" });
+const messageSchema = new schema.Entity("messages", { author: authorSchema });
+const chatSchema = new schema.Entity("chats", { messages: [messageSchema] });
 const normalizarData = (data) => {
-  const dataNormalizada = normalize({ id: 'chatHistory', messages: data }, chatSchema);
+  const dataNormalizada = normalize(
+    { id: "chatHistory", messages: data },
+    chatSchema
+  );
   return dataNormalizada;
 };
 const normalizarMensajes = async () => {
-  const messages = await Chats.getAll(); 
+  const messages = await mensajes.getAll();
+  console.log(messages);
   const normalizedMessages = normalizarData(messages);
+  console.log(JSON.stringify(normalizedMessages, null, 4));
+
   return normalizedMessages;
 };
+
+/* -------------------------------------------------------------------------- */
+/*                                  Socket.io                                 */
 /* -------------------------------------------------------------------------- */
 
-io.on('connection', async (socket) => {
-  const products = await Productos.getAll();
-  socket.emit('allProducts', products);
-  socket.on('msg', async (data) => {
-    await Chats.save({ hora: Date(), ...data });
-    io.sockets.emit('msg-list', await Chats.getAll());
+io.on("connection", async (socket) => {
+  const products = await productos.getAll();
+  socket.emit("allProducts", products);
+  socket.on("msg", async (data) => {
+    const today = new Date();
+    const now = today.toLocaleString();
+    await mensajes.save({ timestamp: now, ...data });
+    io.sockets.emit("msg-list", await mensajes.getAll());
+    io.sockets.emit("msg-list2", await normalizarMensajes());
   });
 
-  socket.on('productoEnviado', saveProduct);
+  socket.on("productoEnviado", saveProduct);
 });
 
 async function saveProduct(data) {
-  await Productos.save(data);
-  Productos.getAll().then((element) => io.sockets.emit('allProducts', element));
+  await productos.save(data);
+  productos.getAll().then((element) => io.sockets.emit("allProducts", element));
 }

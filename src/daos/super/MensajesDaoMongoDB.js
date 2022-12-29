@@ -1,10 +1,10 @@
-import ContenedorMongo from "../../contenedores/ContenedorMongo.js";
-import cartSchema from "../../models/cartSchema.js";
+import ContenedorMongo from "../../container/ContenedorMongo.js";
+import msgSchema from "../../models/msgSchema.js";
 
-class CarritoDaoMongoDB extends ContenedorMongo {
+class MensajesDaoMongoDB extends ContenedorMongo {
   constructor() {
-    super(cartSchema);
+    super(msgSchema);
   }
 }
 
-export default CarritoDaoMongoDB;
+export default MensajesDaoMongoDB;
